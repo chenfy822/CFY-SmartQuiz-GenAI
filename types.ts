@@ -22,7 +22,7 @@ export interface QuestionBank {
   status?: 'processing' | 'ready' | 'error';
   progress?: number; // 0-100 for processing status
   isSystem?: boolean; // For auto-generated banks
-  source?: 'upload' | 'practice'; // Distinguish between uploaded docs and generated practice
+  source?: 'upload' | 'mistake-practice' | 'favorites-practice'; // Distinguish between uploaded docs and generated practice types
 }
 
 export interface AnswerState {

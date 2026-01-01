@@ -201,7 +201,7 @@ const App: React.FC = () => {
     setCurrentView('quiz');
   };
 
-  const handleStartFavoritesQuiz = () => {
+  const handleCreateFavoritesWorkbook = () => {
     const favQuestions: Question[] = [];
     const processedIds = new Set<string>();
 
@@ -219,23 +219,24 @@ const App: React.FC = () => {
       return;
     }
 
-    const favBankId = 'favorites-bank-dynamic';
-    const favBank: QuestionBank = {
-      id: favBankId,
-      title: '我的收藏',
-      description: '所有已收藏的题目集合',
+    // Shuffle and pick 20
+    const shuffledFavs = shuffleArray(favQuestions);
+    const selectedQuestions = shuffledFavs.slice(0, 20);
+
+    const newBankId = `favorites-practice-${Date.now()}`;
+    const newBank: QuestionBank = {
+      id: newBankId,
+      title: `收藏题练习-${new Date().toLocaleDateString()}-${Math.floor(Math.random() * 1000)}`,
+      description: `从收藏夹随机生成的 ${selectedQuestions.length} 道题目练习。`,
       createdAt: Date.now(),
       status: 'ready',
-      questions: favQuestions,
-      isSystem: true
+      questions: selectedQuestions,
+      source: 'favorites-practice',
+      isSystem: false // Can be deleted
     };
 
-    setBanks(prev => {
-      const filtered = prev.filter(b => b.id !== favBankId);
-      return [favBank, ...filtered];
-    });
-    
-    handleStartQuiz(favBankId);
+    setBanks(prev => [newBank, ...prev]);
+    alert(`已生成“${newBank.title}”，请在下方“收藏题练习历史”中查看。`);
   };
 
   const handleCreateMistakeWorkbook = (e: React.MouseEvent) => {
@@ -259,7 +260,7 @@ const App: React.FC = () => {
       createdAt: Date.now(),
       status: 'ready',
       questions: selectedQuestions,
-      source: 'practice',
+      source: 'mistake-practice',
       isSystem: false // Ensure it's not a system bank so it can be deleted
     };
 
@@ -315,7 +316,7 @@ const App: React.FC = () => {
     const total = activeQuestions.length; 
     
     // Calculate stats
-    const answered = Object.values(bankProgress).filter(p => p.isSubmitted);
+    const answered = (Object.values(bankProgress) as AnswerState[]).filter(p => p.isSubmitted);
     const attemptedCount = answered.length;
     const correctCount = answered.filter(p => p.isCorrect).length;
     
@@ -343,7 +344,7 @@ const App: React.FC = () => {
     setShowResultModalRecord(record);
   };
 
-  // Robust delete function for any bank type (Uploaded or Practice)
+  // Robust delete function for any bank type
   const handleDeleteBank = (e: React.MouseEvent, bankId: string) => {
       e.stopPropagation();
       if(window.confirm("确定要删除这个题库/练习册吗？删除后不可恢复。")) {
@@ -354,7 +355,6 @@ const App: React.FC = () => {
               delete newProgress[bankId];
               return newProgress;
           });
-          // Note: We keep quiz history for analytics, or you could delete it here too if strict cleanup is needed
       }
   }
 
@@ -402,7 +402,7 @@ const App: React.FC = () => {
       });
       return items;
     } else {
-      return Object.values(mistakes).map(record => ({
+      return (Object.values(mistakes) as MistakeRecord[]).map(record => ({
         question: record.question,
         record: record
       })).sort((a, b) => b.record!.lastWrongAt - a.record!.lastWrongAt);
@@ -572,11 +572,11 @@ const App: React.FC = () => {
               </div>
               <div className="flex gap-3 mt-4">
                  <button 
-                  onClick={handleStartFavoritesQuiz}
+                  onClick={handleCreateFavoritesWorkbook}
                   disabled={favorites.size === 0}
                   className="flex-1 py-2 bg-white text-yellow-600 text-sm font-semibold rounded-lg shadow-sm border border-yellow-100 hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                  >
-                   开始练习
+                   生成练习
                  </button>
                  <button 
                   onClick={() => setCurrentView('favorites-list')}
@@ -622,23 +622,35 @@ const App: React.FC = () => {
 
           <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
             我的题库
-            <span className="text-sm font-normal text-slate-400">({banks.filter(b => !b.isSystem && b.source !== 'practice').length})</span>
+            <span className="text-sm font-normal text-slate-400">({banks.filter(b => !b.isSystem && b.source === 'upload').length})</span>
           </h2>
           {renderBankGrid(
             banks.filter(b => !b.isSystem && (b.source === 'upload' || !b.source)), 
             "暂无上传的题库，请点击右上角创建。"
           )}
-          
+
           <div className="mt-12">
             <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
               错题练习历史
-              <span className="text-sm font-normal text-slate-400">({banks.filter(b => !b.isSystem && b.source === 'practice').length})</span>
+              <span className="text-sm font-normal text-slate-400">({banks.filter(b => !b.isSystem && (b.source === 'practice' || b.source === 'mistake-practice')).length})</span>
             </h2>
              {renderBankGrid(
-              banks.filter(b => !b.isSystem && b.source === 'practice'), 
+              banks.filter(b => !b.isSystem && (b.source === 'practice' || b.source === 'mistake-practice')), 
               "暂无生成的错题练习册。"
             )}
           </div>
+          
+          <div className="mt-12">
+            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+              收藏题练习历史
+              <span className="text-sm font-normal text-slate-400">({banks.filter(b => !b.isSystem && b.source === 'favorites-practice').length})</span>
+            </h2>
+             {renderBankGrid(
+              banks.filter(b => !b.isSystem && b.source === 'favorites-practice'), 
+              "暂无生成的收藏练习册。"
+            )}
+          </div>
+
         </div>
 
         {showCreateModal && (
@@ -691,7 +703,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* New Quiz Result Summary Modal */}
+        {/* Quiz Result Modal - Home View Context */}
         {showResultModalRecord && (
           <QuizResultModal 
             record={showResultModalRecord} 
@@ -717,7 +729,7 @@ const App: React.FC = () => {
     const currentQuestion = activeQuestions[currentQuestionIndex];
     
     return (
-      <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+      <div className="h-screen flex flex-col bg-slate-50 overflow-hidden relative">
         {/* Navbar */}
         <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 z-20 shadow-sm">
           <div className="flex items-center gap-4">
@@ -766,6 +778,14 @@ const App: React.FC = () => {
             />
           </aside>
         </div>
+        
+        {/* Quiz Result Modal - Rendered on top of quiz view */}
+        {showResultModalRecord && (
+          <QuizResultModal 
+            record={showResultModalRecord} 
+            onClose={handleBackToHome}
+          />
+        )}
       </div>
     );
   }

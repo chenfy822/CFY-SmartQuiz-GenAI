@@ -87,7 +87,7 @@ const QuizResultModal: React.FC<QuizResultModalProps> = ({ record, onClose }) =>
             className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
           >
             返回首页 
-            <span className="bg-white/20 px-2 py-0.5 rounded text-sm font-normal">
+            <span className="bg-white/20 px-2 py-0.5 rounded text-sm font-normal min-w-[30px]">
               {countdown}s
             </span>
           </button>
