@@ -1,0 +1,5 @@
+{
+  "name": "智能题库 GenAI",
+  "description": "一个智能题库平台，允许用户使用 Gemini 从 PDF/Word 文档生成题库，具有实时反馈和进度跟踪的交互式测试界面。",
+  "requestFramePermissions": []
+}
