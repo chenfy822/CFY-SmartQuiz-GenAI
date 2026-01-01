@@ -8,6 +8,7 @@ import QuizResultModal from './components/QuizResultModal';
 import HistoryDetailView from './components/HistoryDetailView';
 import { DocumentPlusIcon, ChevronLeftIcon, BeakerIcon, BookmarkIcon, ListBulletIcon, TrashIcon, ClockIcon, XMarkIcon } from './components/Icons';
 import { generateQuestionBank } from './services/geminiService';
+import { initialSystemBank } from './data/initialData';
 
 // Keys for LocalStorage
 const STORAGE_KEYS = {
@@ -66,7 +67,19 @@ const App: React.FC = () => {
         const savedMistakes = localStorage.getItem(STORAGE_KEYS.MISTAKES);
         const savedHistory = localStorage.getItem(STORAGE_KEYS.QUIZ_HISTORY);
 
-        if (savedBanks) setBanks(JSON.parse(savedBanks));
+        let loadedBanks: QuestionBank[] = [];
+        if (savedBanks) {
+           loadedBanks = JSON.parse(savedBanks);
+        }
+
+        // Ensure system bank exists and is up to date
+        // Filter out old version of system bank if exists (by ID) to allow updates
+        loadedBanks = loadedBanks.filter(b => b.id !== initialSystemBank.id);
+        // Prepend current version of system bank
+        loadedBanks.unshift(initialSystemBank);
+
+        setBanks(loadedBanks);
+        
         if (savedProgress) setProgress(JSON.parse(savedProgress));
         if (savedFavorites) setFavorites(new Set(JSON.parse(savedFavorites)));
         if (savedMistakes) setMistakes(JSON.parse(savedMistakes));
@@ -76,6 +89,8 @@ const App: React.FC = () => {
 
       } catch (e) {
         console.error("Failed to load data from storage", e);
+        // Fallback if error
+        setBanks([initialSystemBank]);
       } finally {
         isLoaded.current = true;
       }
@@ -347,6 +362,13 @@ const App: React.FC = () => {
   // Robust delete function for any bank type
   const handleDeleteBank = (e: React.MouseEvent, bankId: string) => {
       e.stopPropagation();
+      
+      const bank = banks.find(b => b.id === bankId);
+      if (bank?.isSystem) {
+        alert("系统题库不可删除。");
+        return;
+      }
+
       if(window.confirm("确定要删除这个题库/练习册吗？删除后不可恢复。")) {
           setBanks(prev => prev.filter(b => b.id !== bankId));
           // Clean up progress
@@ -461,7 +483,7 @@ const App: React.FC = () => {
                      </button>
                    )}
                    {/* Delete Button */}
-                   {bank.status === 'ready' && (
+                   {bank.status === 'ready' && !bank.isSystem && (
                       <button 
                           onClick={(e) => handleDeleteBank(e, bank.id)}
                           className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors z-10"
@@ -625,7 +647,7 @@ const App: React.FC = () => {
             <span className="text-sm font-normal text-slate-400">({banks.filter(b => !b.isSystem && b.source === 'upload').length})</span>
           </h2>
           {renderBankGrid(
-            banks.filter(b => !b.isSystem && (b.source === 'upload' || !b.source)), 
+            banks.filter(b => (b.isSystem || (b.source === 'upload' || !b.source))), 
             "暂无上传的题库，请点击右上角创建。"
           )}
 
